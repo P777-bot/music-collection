@@ -1,0 +1,11 @@
+<div class="song-list">
+  <h1>รายการเพลง</h1>
+
+  <div class="song-grid">
+    @for (song of songs(); track song.id) {
+      <app-song-card [song]="song" />
+    }
+  </div>
+</div>
+
+

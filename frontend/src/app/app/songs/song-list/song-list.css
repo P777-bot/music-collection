@@ -1,0 +1,55 @@
+.song-list {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.song-list h1 {
+  margin: 0 0 24px;
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.song-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.song-card {
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+}
+
+.song-card h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.song-card p {
+  margin: 0 0 16px;
+  color: #666;
+}
+
+.song-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.song-info span {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #f1f1f1;
+  color: #555;
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .song-grid {
+    grid-template-columns: 1fr;
+  }
+}

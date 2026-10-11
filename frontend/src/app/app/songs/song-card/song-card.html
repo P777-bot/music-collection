@@ -1,0 +1,27 @@
+<div class="song-card">
+  <div class="cover">
+    @if (song().coverUrl) {
+      <img
+        [src]="song().coverUrl"
+        [alt]="song().name"
+        class="cover-image"
+      />
+    } @else {
+      <div class="cover-fallback">
+        {{ song().name.charAt(0) }}
+      </div>
+    }
+  </div>
+
+  <div class="song-info">
+    <h3>{{ song().name }}</h3>
+    <p>{{ song().artist }}</p>
+
+    <div class="song-meta">
+      <span>{{ song().album }}</span>
+      <span>{{ song().genre }}</span>
+      <span>{{ song().releaseDate }}</span>
+    </div>
+  </div>
+</div>
+

@@ -1,0 +1,509 @@
+<div class="app">
+  <header class="navbar">
+    <button class="brand" type="button" (click)="goHome()" [attr.aria-label]="tr('Home')">
+      <span class="brand-mark">♫</span>
+      <span>Music Collection</span>
+    </button>
+
+    <nav class="navlinks" [attr.aria-label]="tr('Main navigation')">
+      <button class="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-400" [class.active]="page === 'home'" (click)="goHome()">{{ tr('Home') }}</button>
+      <button class="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-400" [class.active]="page === 'discover'" (click)="goDiscover()">{{ tr('Discover') }}</button>
+      @if (auth.user(); as signedIn) {
+        <button class="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-400" [class.active]="page === 'favorites'" (click)="go('favorites')">{{ tr('My Favorites') }}</button>
+      }
+    </nav>
+
+    <div class="account-area">
+      @if (auth.user()) {
+        <button class="secondary add-top focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-400" (click)="go('add')" [attr.aria-label]="tr('Add Song')" [title]="tr('Add Song')">+ {{ tr('Add Song') }}</button>
+      }
+      <div class="account-desktop">
+        <button class="language-toggle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-400" type="button" (click)="toggleLanguage()" [attr.aria-label]="language.language() === 'en' ? 'Switch to Thai' : 'เปลี่ยนเป็นภาษาอังกฤษ'">{{ language.language() === 'en' ? 'TH' : 'EN' }}</button>
+        @if (auth.user(); as signedIn) {
+          <details class="account-desktop-menu">
+            <summary class="account-summary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-400" [attr.aria-label]="tr('Account menu')">
+              <span class="account-avatar" aria-hidden="true">♫</span><span class="user-status" [title]="signedIn.email">{{ signedIn.email }}</span>
+            </summary>
+            <div class="account-menu"><span class="account-menu-email">{{ signedIn.email }}</span>
+              <button (click)="go('favorites')">{{ tr('My Favorites') }}</button>
+              <button (click)="logout()">{{ tr('Logout') }}</button>
+            </div>
+          </details>
+        } @else {
+          <button class="account-link focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-400" [class.active]="page === 'login'" (click)="go('login')">{{ tr('Login') }}</button>
+          <button class="primary account-register focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-400" [class.active]="page === 'register'" (click)="go('register')">{{ tr('Register') }}</button>
+        }
+      </div>
+      <details class="account-mobile">
+        <summary class="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-fuchsia-400" [attr.aria-label]="tr('Account menu')"><span class="account-avatar">♫</span></summary>
+        @if (auth.user(); as signedIn) {
+          <div class="account-menu"><span class="account-menu-email">{{ signedIn.email }}</span>
+            <button (click)="go('favorites')">{{ tr('My Favorites') }}</button>
+            <button (click)="logout()">{{ tr('Logout') }}</button>
+            <button class="language-toggle" type="button" (click)="toggleLanguage()">{{ language.language() === 'en' ? 'ภาษาไทย · TH' : 'English · EN' }}</button>
+          </div>
+        } @else {
+          <div class="account-menu">
+            <button [class.active]="page === 'login'" (click)="go('login')">{{ tr('Login') }}</button>
+            <button [class.active]="page === 'register'" (click)="go('register')">{{ tr('Register') }}</button>
+            <button class="language-toggle" type="button" (click)="toggleLanguage()">{{ language.language() === 'en' ? 'ภาษาไทย · TH' : 'English · EN' }}</button>
+          </div>
+        }
+      </details>
+    </div>
+  </header>
+
+  <main class="container">
+    @if (page === 'home' || page === 'discover' || page === 'favorites') {
+      <section>
+        @if (page === 'home') {
+        <div class="hero">
+          <div class="hero-copy">
+            <div class="section-label">Music Collection</div>
+            <h1>{{ tr('Discover Your') }} <span class="grad">{{ tr('Music') }}</span></h1>
+            <p>
+              {{ tr('Find your favorite songs, artists and albums.') }}
+              {{ tr('Browse the library, search by artist or album, and save favorites to your account.') }}
+            </p>
+            <div class="hero-actions">
+              <button class="primary" (click)="goDiscover()">{{ tr('Explore music') }}</button>
+              @if (auth.user()) { <button class="secondary" (click)="go('add')">+ {{ tr('Add Song') }}</button> }
+            </div>
+          </div>
+
+          <div class="hero-art" [attr.aria-label]="tr('Decorative vinyl record')">
+            <div class="vinyl"></div>
+          </div>
+        </div>
+        } @else if (page === 'discover') {
+          <div class="section-head discover-heading">
+            <div>
+              <div class="section-label">Music Collection</div>
+              <h1>{{ tr('Discover Music') }}</h1>
+            </div>
+          </div>
+        } @else {
+          <div class="section-head discover-heading">
+            <div>
+              <div class="section-label">{{ tr('Your Library') }}</div>
+              <h1>{{ tr('My Favorites') }}</h1>
+            </div>
+          </div>
+        }
+
+        @if (page === 'home') {
+          <div class="home-search">
+            <input class="searchbox" type="search" [(ngModel)]="search" (keydown.enter)="submitHomeSearch()"
+              [placeholder]="tr('Search songs, artists, albums...')" [attr.aria-label]="tr('Search music from Home')" />
+            <button class="primary" (click)="submitHomeSearch()">{{ tr('Search') }}</button>
+          </div>
+        }
+
+        @if (page !== 'home') {
+        <div class="search-row">
+          <input
+            class="searchbox"
+            type="search"
+            [(ngModel)]="search"
+            (ngModelChange)="onSearchInput()"
+            [placeholder]="tr('Search by song, artist, album or Genre')"
+            [attr.aria-label]="tr('Search by song, artist, album or Genre')"
+          />
+
+        </div>
+
+        <div class="genre-filter" role="group" [attr.aria-label]="tr('Filter by Genre')">
+          <div class="genre-filter-heading"><span>{{ tr('Genres') }}</span>
+            @if (selectedGenres.length || search) {
+              <button class="clear-filters" (click)="clearFilters()">{{ tr('Clear filters') }}</button>
+            }
+          </div>
+          <div class="genre-chip-list">
+            @for (genre of genres; track genre.id) {
+              <button type="button" class="genre-chip" [class.selected]="selectedGenres.includes(genre.name)"
+                [attr.aria-pressed]="selectedGenres.includes(genre.name)"
+                (click)="toggleFilterGenre(genre.name)">{{ tr(genre.name) }}</button>
+            }
+          </div>
+          @if (selectedGenres.length) {
+            <div class="selected-genres" [attr.aria-label]="tr('Selected Genres')">
+              @for (genre of selectedGenres; track genre) {
+                <button type="button" class="selected-genre" (click)="toggleFilterGenre(genre)"
+                  [attr.aria-label]="'นำ ' + tr(genre) + ' ออกจากตัวกรอง'">{{ tr(genre) }} <span aria-hidden="true">×</span></button>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="section-head">
+          <h2>{{ page === 'favorites' ? tr('Favorite Songs') : tr('All Songs') }}</h2>
+            <span class="small-nav-note">{{ visibleSongs.length }} {{ tr('songs') }}</span>
+        </div>
+
+        @if (loadingSongs || (page === 'favorites' && loadingFavorites)) {
+          <div class="state-message" role="status">{{ tr('Loading songs...') }}</div>
+        } @else if (loadError) {
+          <div class="state-message error-state" role="alert">
+            <p>{{ loadError }}</p>
+            <button class="secondary" (click)="loadSongs()">{{ tr('Try again') }}</button>
+          </div>
+        } @else if (page === 'favorites' && favoritesError) {
+          <div class="state-message error-state" role="alert">
+            <p>{{ favoritesError }}</p>
+            <button class="secondary" (click)="retryFavorites()">{{ tr('Retry Favorites') }}</button>
+          </div>
+        } @else if (page === 'favorites' && visibleSongs.length === 0) {
+          <div class="state-message">
+            {{ tr('No favorites yet') }}
+            <p><button class="secondary" (click)="goDiscover()">{{ tr('Go to Discover') }}</button></p>
+          </div>
+        } @else if (songs.length === 0) {
+          <div class="state-message">
+            {{ tr('No songs yet. Sign in to add the first song.') }}
+            <p>@if (auth.user()) { <button class="primary" (click)="go('add')">+ {{ tr('Add Song') }}</button> } @else { <button class="primary" (click)="go('login')">{{ tr('Login') }}</button> }</p>
+          </div>
+        } @else {
+          <div class="grid">
+            @for (song of visibleSongs; track song.id) {
+              <article class="song-card">
+                <div class="cover" [class]="song.cls">
+                  @if (song.coverUrl) {
+                    <img
+                      [src]="song.coverUrl"
+                      [alt]="tr('Cover for') + ' ' + song.name"
+                      class="cover-image"
+                      loading="lazy"
+                    />
+                  } @else {
+                    <div class="cover-text">{{ song.album }}</div>
+                  }
+                </div>
+
+                <div class="song-info">
+                  <div class="song-title">{{ song.name }}</div>
+                  <div class="artist">{{ song.artist }}</div>
+                  @for (genre of displayGenres(song); track genre) {
+                    <span class="genre-tag">{{ tr(genre) }}</span>
+                  }
+
+                  <div class="card-footer">
+                    <button class="view-link" (click)="showDetail(song.id)">
+                      {{ tr('View Detail →') }}
+                    </button>
+                    <button class="ghost-icon favorite-toggle" [class.is-favorite]="isFavorite(song.id)"
+                      [disabled]="favoriteBusyIds.has(song.id)" [attr.aria-pressed]="isFavorite(song.id)"
+                      [attr.aria-label]="isFavorite(song.id) ? tr('Remove Favorite') : tr('Add Favorite')"
+                      (click)="toggleFavorite(song)">♥</button>
+                    @if (canManage(song)) {
+                      <button class="ghost-icon" [attr.aria-label]="tr('Edit Song')" [title]="tr('Edit Song')"
+                        (click)="editSong(song.id)">✎</button>
+                    }
+                  </div>
+                </div>
+              </article>
+            }
+
+            @if (visibleSongs.length === 0) {
+              <div class="empty">
+                {{ tr('No songs found.') }}
+                <p class="muted">{{ tr('Try changing your search or genre filter') }}</p>
+                <button class="secondary" (click)="clearFilters()">
+                  {{ tr('Clear Search & Filter') }}
+                </button>
+              </div>
+            }
+          </div>
+        }
+        }
+      </section>
+    }
+
+    @if (page === 'detail') {
+      @if (selectedSong; as song) {
+        <section>
+          <button class="back" (click)="goDiscover()">← {{ tr('Back to Discover') }}</button>
+
+          <div class="detail">
+            <div class="detail-cover" [class]="song.cls">
+              @if (song.coverUrl) {
+                <img [src]="song.coverUrl" [alt]="'ปกเพลง ' + song.name" />
+              } @else {
+                <div class="cover-text">{{ song.album }}</div>
+              }
+            </div>
+
+            <div class="detail-content">
+              <div class="section-label">{{ tr('Song Detail') }}</div>
+              <h2>{{ song.name }}</h2>
+              <div class="big-artist">{{ song.artist }}</div>
+
+              <div class="meta">
+                <div class="meta-card">
+                  <div class="meta-label">{{ tr('Album') }}</div>
+                  <div class="meta-value">{{ song.album }}</div>
+                </div>
+                <div class="meta-card">
+                  <div class="meta-label">{{ tr('Genre') }}</div>
+                  <div class="meta-value genre-values">{{ displayGenreText(song) }}</div>
+                </div>
+                <div class="meta-card">
+                  <div class="meta-label">{{ tr('Release Date') }}</div>
+                  <div class="meta-value">{{ song.date || '—' }}</div>
+                </div>
+              </div>
+
+              <div class="actions">
+                <button class="secondary favorite-action" [class.is-favorite]="isFavorite(song.id)"
+                  [disabled]="favoriteBusyIds.has(song.id)" [attr.aria-pressed]="isFavorite(song.id)"
+                  (click)="toggleFavorite(song)">
+                  {{ isFavorite(song.id) ? '♥ ' + tr('Remove Favorite') : '♡ ' + tr('Add Favorite') }}
+                </button>
+                @if (canManage(song)) {
+                  <button class="secondary" (click)="startEdit()">{{ tr('Edit') }}</button>
+                  <button class="danger" (click)="openDelete()">{{ tr('Delete') }}</button>
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+      } @else {
+        <div class="state-message">
+          ไม่พบเพลงที่เลือก
+          <p><button class="secondary" (click)="goHome()">{{ tr('Back to song list') }}</button></p>
+        </div>
+      }
+    }
+
+    @if (page === 'add') {
+      <section>
+        <div class="section-label">Music Collection</div>
+        <h2 class="page-title">{{ tr('Add New Song') }}</h2>
+        <p class="page-subtitle">{{ tr('Create a new item in your personal music collection.') }}</p>
+
+        <form class="form-shell" (ngSubmit)="addSong()" #addSongForm="ngForm">
+          <div class="form-grid">
+            <div class="field full">
+              <label for="add-name">{{ tr('Song Name *') }}</label>
+              <input id="add-name" name="name" [(ngModel)]="addForm.name"
+                required maxlength="200" #addName="ngModel" />
+              @if (addName.invalid && addName.touched) {
+                <small class="field-error">{{ tr('Enter a song name (up to 200 characters).') }}</small>
+              }
+            </div>
+
+            <div class="field">
+              <label for="add-artist">{{ tr('Artist *') }}</label>
+              <input id="add-artist" name="artist" [(ngModel)]="addForm.artist"
+                required maxlength="150" #addArtist="ngModel" />
+              @if (addArtist.invalid && addArtist.touched) {
+                <small class="field-error">{{ tr('Enter an artist name.') }}</small>
+              }
+            </div>
+
+            <div class="field">
+              <label for="add-album">{{ tr('Album *') }}</label>
+              <input id="add-album" name="album" [(ngModel)]="addForm.album"
+                required maxlength="200" #addAlbum="ngModel" />
+              @if (addAlbum.invalid && addAlbum.touched) {
+                <small class="field-error">{{ tr('Enter an album name.') }}</small>
+              }
+            </div>
+
+            <div class="field full">
+              <span class="field-label">{{ tr('Genre * Choose multiple') }}</span>
+              <div class="genre-chip-list form-genre-list">
+                @for (genre of genres; track genre.id) {
+                  <button type="button" class="genre-chip" [class.selected]="addForm.selectedGenres.includes(genre.name)"
+                    [attr.aria-pressed]="addForm.selectedGenres.includes(genre.name)"
+                    (click)="toggleFormGenre(addForm, genre.name)">
+                    {{ tr(genre.name) }}@if (genre.parent) { <small> · {{ tr(genre.parent.name) }}</small> }
+                  </button>
+                }
+              </div>
+              @if (!addForm.selectedGenres.length) { <small class="field-error">{{ tr('Select at least one Genre') }}</small> }
+            </div>
+
+            <div class="field">
+              <label for="add-date">{{ tr('Release Date *') }}</label>
+              <input id="add-date" name="date" [(ngModel)]="addForm.date"
+                required type="date" [max]="'' + '9999-12-31'" />
+            </div>
+
+            <div class="field full">
+              <label for="add-url">{{ tr('Cover Image URL (optional)') }}</label>
+              <input id="add-url" name="url" [(ngModel)]="addForm.url"
+                type="url" placeholder="https://..." />
+              <small class="muted">{{ tr('Enter a cover image URL or leave it blank.') }}</small>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="secondary" (click)="goHome()">{{ tr('Cancel') }}</button>
+            <button class="primary" type="submit" [disabled]="savingAdd">
+              {{ savingAdd ? 'Adding...' : 'Add Song' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    }
+
+    @if (page === 'edit') {
+      <section>
+      @if (selectedSong && canManage(selectedSong)) {
+        <div class="section-label">Music Collection</div>
+        <h2 class="page-title">{{ tr('Edit Song') }}</h2>
+        <p class="page-subtitle">{{ tr('Update the selected song.') }}</p>
+
+        <form class="form-shell" (ngSubmit)="saveEdit()" #editSongForm="ngForm">
+          <div class="form-grid">
+            <div class="field full">
+              <label for="edit-name">{{ tr('Song Name *') }}</label>
+              <input id="edit-name" name="editName" [(ngModel)]="editForm.name"
+                required maxlength="200" />
+            </div>
+
+            <div class="field">
+              <label for="edit-artist">{{ tr('Artist *') }}</label>
+              <input id="edit-artist" name="editArtist" [(ngModel)]="editForm.artist"
+                required maxlength="150" />
+            </div>
+
+            <div class="field">
+              <label for="edit-album">{{ tr('Album *') }}</label>
+              <input id="edit-album" name="editAlbum" [(ngModel)]="editForm.album"
+                required maxlength="200" />
+            </div>
+
+            <div class="field full">
+              <span class="field-label">{{ tr('Genre · Choose multiple') }}</span>
+              @if (!editForm.selectedGenres.length) {
+                <small class="muted">{{ tr('Legacy Genre “') }}{{ editForm.genre }}{{ tr('” has no standard match. Leave it unselected to keep the original value.') }}</small>
+              }
+              <div class="genre-chip-list form-genre-list">
+                @for (genre of genres; track genre.id) {
+                  <button type="button" class="genre-chip" [class.selected]="editForm.selectedGenres.includes(genre.name)"
+                    [attr.aria-pressed]="editForm.selectedGenres.includes(genre.name)"
+                    (click)="toggleFormGenre(editForm, genre.name)">
+                    {{ tr(genre.name) }}@if (genre.parent) { <small> · {{ tr(genre.parent.name) }}</small> }
+                  </button>
+                }
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="edit-date">{{ tr('Release Date *') }}</label>
+              <input id="edit-date" name="editDate" [(ngModel)]="editForm.date"
+                required type="date" />
+            </div>
+
+            <div class="field full">
+              <label for="edit-url">{{ tr('Cover Image URL (optional)') }}</label>
+              <input id="edit-url" name="editUrl" [(ngModel)]="editForm.url"
+                type="url" placeholder="https://..." />
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="secondary" (click)="go('detail')">{{ tr('Cancel') }}</button>
+            <button class="primary" type="submit" [disabled]="savingEdit">
+              {{ savingEdit ? 'Saving...' : 'Save Changes' }}
+            </button>
+          </div>
+        </form>
+        } @else {
+          <div class="state-message error-state" role="alert">
+            ไม่พบเพลง หรือบัญชีนี้ไม่มีสิทธิ์แก้ไขเพลงนี้
+            <p><button class="secondary" (click)="goHome()">กลับไปยังรายการเพลง</button></p>
+          </div>
+        }
+      </section>
+    }
+
+    @if (page === 'login' || page === 'register') {
+      <section class="auth-page">
+        <div class="section-label">{{ tr('Music Collection Account') }}</div>
+        <h1 class="page-title">{{ page === 'register' ? tr('Create Account') : tr('Welcome Back') }}</h1>
+        <p class="page-subtitle">{{ page === 'register' ? tr('Save your favorite songs to your account.') : tr('Log in to open your favorites.') }}</p>
+
+        <form class="form-shell auth-form" (ngSubmit)="submitAuth()" #authFormRef="ngForm">
+          <div class="field">
+            <label for="auth-email">{{ tr('Email') }}</label>
+            <input id="auth-email" name="email" type="email" autocomplete="email"
+              [(ngModel)]="authForm.email" required maxlength="254" email />
+          </div>
+          <div class="field">
+            <label for="auth-password">{{ tr('Password') }}</label>
+            <div class="password-control">
+            <input id="auth-password" name="password" [type]="showPassword ? 'text' : 'password'"
+              [attr.autocomplete]="page === 'register' ? 'new-password' : 'current-password'"
+              [(ngModel)]="authForm.password" required [attr.minlength]="page === 'register' ? 15 : 8" maxlength="128" />
+            <button type="button" class="password-toggle" [attr.aria-pressed]="showPassword"
+              (click)="showPassword = !showPassword">{{ tr(showPassword ? 'Hide' : 'Show') }}</button>
+            </div>
+            @if (page === 'register') {
+              <small class="muted">อย่างน้อย 15 ตัวอักษร สูงสุด 128 · ไม่บังคับรูปแบบตัวพิมพ์/สัญลักษณ์<br>At least 15 characters, up to 128. No composition rules.</small>
+            }
+          </div>
+          @if (page === 'register') {
+            <div class="field">
+              <label for="auth-confirm-password">{{ tr('Confirm Password') }}</label>
+              <input id="auth-confirm-password" name="confirmPassword" [type]="showPassword ? 'text' : 'password'"
+                autocomplete="new-password" [(ngModel)]="authForm.confirmPassword" required maxlength="128" />
+              @if (authForm.confirmPassword && authForm.confirmPassword !== authForm.password) {
+                <small class="field-error">{{ tr('Passwords do not match.') }}</small>
+              }
+            </div>
+          }
+          <div class="form-actions">
+            <button class="primary" type="submit" [disabled]="savingAuth || authFormRef.invalid">
+              {{ savingAuth ? tr('Please wait...') : page === 'register' ? tr('Register') : tr('Login') }}
+            </button>
+          </div>
+        </form>
+        <p class="auth-switch">
+          {{ page === 'register' ? tr('Already have an account?') : tr('Need an account?') }}
+          <button class="view-link" (click)="go(page === 'register' ? 'login' : 'register')">
+            {{ page === 'register' ? tr('Login') : tr('Register') }}
+          </button>
+        </p>
+      </section>
+    }
+
+    <router-outlet />
+  </main>
+</div>
+
+@if (deleteOpen && selectedSong; as song) {
+  <div class="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+      <h3 id="delete-title">{{ tr('Delete Song?') }}</h3>
+      <p>
+        {{ tr('Are you sure you want to delete') }}
+        <span class="warn">“{{ song.name }}”</span>?
+      </p>
+
+      <div class="modal-actions">
+        <button class="secondary" (click)="closeDelete()" [disabled]="deletingSong">
+          {{ tr('Cancel') }}
+        </button>
+        <button class="danger" (click)="confirmDelete()" [disabled]="deletingSong">
+          {{ deletingSong ? tr('Deleting...') : tr('Delete') }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+
+@if (toast) {
+  <div
+    class="toast"
+    role="status"
+    [class.toast-success]="toastType === 'success'"
+    [class.toast-error]="toastType === 'error'"
+    [class.toast-warning]="toastType === 'warning'"
+  >
+    {{ toast }}
+  </div>
+}
+
