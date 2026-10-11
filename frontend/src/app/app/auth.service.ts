@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, map, of, tap, throwError } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface AuthUser {
   id: number;
@@ -14,7 +15,7 @@ interface AuthResponse { user: AuthUser }
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = 'http://localhost:3000/auth';
+  private readonly baseUrl = `${environment.apiBaseUrl.replace(/\/+$/, '')}/auth`;
   readonly user = signal<AuthUser | null>(null);
 
   register(email: string, password: string): Observable<AuthUser> {

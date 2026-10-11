@@ -78,7 +78,8 @@ describe('App', () => {
     ]);
     await fixture.whenStable();
     fixture.detectChanges();
-    expect((fixture.nativeElement as HTMLElement).textContent).toContain('BOWKYLION');
+    expect(fixture.componentInstance.page).toBe('artists');
+    expect(fixture.componentInstance.artists[0]?.name).toBe('BOWKYLION');
 
     await TestBed.inject(Router).navigateByUrl('/artists/3');
     fixture.detectChanges();

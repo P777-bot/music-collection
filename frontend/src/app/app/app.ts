@@ -14,6 +14,7 @@ import { AuthService } from './auth.service';
 import { FavoritesService } from './favorites.service';
 import { LanguageService, type AppLanguage } from './language.service';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
+import { environment } from '../../environments/environment';
 
 type Page = 'home' | 'discover' | 'artists' | 'artist' | 'detail' | 'add' | 'edit' | 'login' | 'register' | 'favorites';
 
@@ -108,10 +109,11 @@ interface GenreOption {
   templateUrl: './app.html',
 })
 export class App implements OnInit, OnDestroy {
-  // ใช้ URL จริงของ NestJS API ห้ามใส่เป็น Markdown link
-  private readonly apiUrl = 'http://localhost:3000/songs';
-  private readonly genresUrl = 'http://localhost:3000/genres';
-  private readonly artistsUrl = 'http://localhost:3000/artists';
+  // API origin comes from the Angular environment configuration.
+  private readonly apiBaseUrl = environment.apiBaseUrl.replace(/\/+$/, '');
+  private readonly apiUrl = `${this.apiBaseUrl}/songs`;
+  private readonly genresUrl = `${this.apiBaseUrl}/genres`;
+  private readonly artistsUrl = `${this.apiBaseUrl}/artists`;
 
   private toastTimer?: ReturnType<typeof setTimeout>;
 

@@ -106,6 +106,37 @@ npm.cmd run promote-admin -- admin@example.test admin@example.test
 - `backend/prisma/seed.ts` เรียก `deleteMany()` ก่อนใส่ข้อมูลตัวอย่าง จึงลบข้อมูลเพลงและศิลปินเดิมได้ ใช้ได้เฉพาะฐานข้อมูลทดลองที่ยอมลบข้อมูลได้เท่านั้น
 - ห้ามใส่ `.env` หรือรหัสผ่านจริงใน README, source control หรือภาพหน้าจอ
 
+## Deploy บน Render
+
+โปรเจกต์นี้เป็น monorepo ให้สร้างบริการจาก Repository เดียวกัน:
+
+### Backend — Render Web Service
+
+- Root Directory: `backend`
+- Build Command: `npm ci && npm run build:render` โดย script สร้าง Prisma Client ก่อน NestJS compile
+- Start Command: `npm run start:prod`
+- Environment Variables ใน Render Dashboard: `DATABASE_URL` (Internal Database URL ของ PostgreSQL), `JWT_SECRET` (ค่าสุ่มที่เป็นความลับ) และ `FRONTEND_ORIGIN` (Origin เต็มของ Static Site เช่น `https://ชื่อเว็บ.onrender.com`)
+- Render กำหนด `PORT` ให้ Web Service; NestJS อ่าน `process.env.PORT` อยู่แล้ว อย่า commit ค่า PORT หรือ Secret ลง Source Code
+
+### Frontend — Render Static Site
+
+- Root Directory: `frontend`
+- Build Command: `npm ci && npm run build:render`
+- Publish Directory: `dist/frontend/browser`
+- Build Environment Variable: `API_BASE_URL` ต้องเป็น HTTPS URL ของ Backend Web Service เช่น `https://ชื่อ-api.onrender.com` โดยไม่ใส่ credentials หรือ Secret
+- `build:render` เขียน `runtime-config.js` ลง Build Output จาก `API_BASE_URL`; URL นี้ไม่ใช่ Secret และไม่ถูกเขียนลง Source Code ส่วนการรันในเครื่องใช้ `http://localhost:3000` จาก Angular development environment
+- ตั้งค่า SPA fallback/rewrite ของ Static Site ให้ route กลับไป `index.html` เพื่อรองรับ Angular Router เมื่อเปิด URL ภายในโดยตรง
+
+### PostgreSQL และ Migrations
+
+1. สร้าง PostgreSQL บน Render แล้วตั้ง `DATABASE_URL` ใน Backend Environment โดยใช้ connection string จาก Dashboard เท่านั้น
+2. ตรวจฐานข้อมูลเป้าหมายและ migration history ก่อน deploy schema จากนั้นรัน `npm run prisma:migrate:deploy` ใน Backend Shell หรือ Pre-Deploy Command เมื่อยืนยันแล้วว่าฐานข้อมูลว่างและ migration history ถูกต้อง
+3. ห้ามรัน `prisma migrate reset` หรือ `prisma/seed.ts` กับข้อมูลที่ต้องเก็บรักษา; Seed ปัจจุบันมี `deleteMany()`
+4. Migration `20261007211747_init` ลบ `Song.artist` และเพิ่ม `artistId` แบบ required; `20261007221825_init` ลบ `title`, `createdAt`, `releaseYear`, `coverUrl` และเพิ่ม required fields; `20261008120000_unique_song_per_album` อาจล้มเหลวหากมีเพลงซ้ำใน Artist/Album เดียวกัน
+5. Migration เก่าเหล่านี้อาจทำให้ข้อมูลสูญหายหรือล้มเหลวเมื่อ deploy ไปยังฐานข้อมูลที่มีข้อมูลแต่ไม่มี migration history ที่ตรงกัน สำหรับฐานข้อมูลเช่นนั้นให้หยุดและวางแผน baseline/ตรวจข้อมูลก่อน ห้ามปรับ migration เก่าหรือ deploy ต่อโดยคาดเดา
+
+`npm run prisma:generate` และ `npm run build` ใช้ตรวจ/สร้าง artifacts โดยไม่แก้ข้อมูล DB; Render ใช้ `npm run build:render` เพื่อรันทั้งสองขั้นตอน ส่วน `npm run prisma:migrate:deploy` เปลี่ยน schema จริง ให้รันกับฐานข้อมูลเป้าหมายที่ตรวจสอบแล้วเท่านั้น
+
 ## API
 
 Song endpoints ใช้ prefix `/songs`; response มี `artist` และ `genres` relation ส่วน `genre` ยังคงเป็นข้อความ legacy/ค่าหลักเพื่อรองรับ client เดิม.
@@ -219,5 +250,3 @@ npm.cmd test -- --watch=false
 - migrations รุ่นเริ่มต้นมีคำเตือนเรื่องการลบคอลัมน์ หากสร้างฐานข้อมูลใหม่บนข้อมูลเดิม/นำไปใช้กับฐานข้อมูลอื่นให้ตรวจสถานะและสำรองข้อมูลก่อน
 - migration unique song ที่กู้คืนได้อิง unique index ในฐานข้อมูลที่เชื่อมต่อ; ตรวจ checksum/history ของฐานข้อมูลเป้าหมายอื่นก่อน deploy
 - README นี้ไม่ได้บรรจุรายชื่อสมาชิกกลุ่ม เนื่องจากไม่มีข้อมูลสมาชิกใน source ที่ตรวจพบ
-#   m u s i c - c o l l e c t i o n  
- 
