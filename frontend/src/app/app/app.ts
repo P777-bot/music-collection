@@ -123,6 +123,7 @@ export class App implements OnInit, OnDestroy {
 
   search = '';
   selectedGenres: string[] = [];
+  selectedArtistId: number | null = null;
   genres: GenreOption[] = [];
   artists: ArtistSummary[] = [];
   artistDetail: ArtistDetail | null = null;
@@ -414,8 +415,20 @@ export class App implements OnInit, OnDestroy {
   clearFilters(): void {
     this.search = '';
     this.selectedGenres = [];
+    this.selectedArtistId = null;
     if (this.page === 'discover') {
-      void this.router.navigate([], { queryParams: { q: null }, queryParamsHandling: 'merge' });
+      void this.router.navigate([], { queryParams: { q: null, artistId: null }, queryParamsHandling: 'merge' });
+    }
+  }
+
+  onArtistFilterChange(value: string | number | null): void {
+    const parsed = Number(value);
+    this.selectedArtistId = Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+    if (this.page === 'discover') {
+      void this.router.navigate([], {
+        queryParams: { artistId: this.selectedArtistId },
+        queryParamsHandling: 'merge',
+      });
     }
   }
 
@@ -465,8 +478,9 @@ export class App implements OnInit, OnDestroy {
 
       const matchesGenre = selected.size === 0 ||
         song.genres.some(genre => selected.has(this.normalize(genre)));
+      const matchesArtist = this.page !== 'discover' || this.selectedArtistId === null || song.artistId === this.selectedArtistId;
 
-      return matchesSearch && matchesGenre;
+      return matchesSearch && matchesGenre && matchesArtist;
     });
   }
 
@@ -612,7 +626,11 @@ export class App implements OnInit, OnDestroy {
     else this.page = 'home';
 
     if (this.page === 'discover') {
-      this.search = this.router.parseUrl(url).queryParams['q'] ?? '';
+      const queryParams = this.router.parseUrl(url).queryParams;
+      this.search = queryParams['q'] ?? '';
+      const artistId = Number(queryParams['artistId']);
+      this.selectedArtistId = Number.isSafeInteger(artistId) && artistId > 0 ? artistId : null;
+      if (!this.loadedArtistDirectory) this.loadArtists();
     }
   }
 
@@ -903,8 +921,10 @@ export class App implements OnInit, OnDestroy {
           this.addForm = this.emptyForm();
           this.search = '';
           this.selectedGenres = [];
+          this.selectedArtistId = null;
           this.page = 'discover';
           void this.router.navigate(['/discover']);
+          this.loadArtists(true);
           this.loadError = '';
 
           this.showToast(refreshError
@@ -968,6 +988,7 @@ export class App implements OnInit, OnDestroy {
           this.songs = this.songs.map(item =>
             item.id === updated.id ? updated : item
           );
+          this.loadArtists(true);
 
           this.selectedId = updated.id;
           this.navigateToSong(updated.id);
@@ -1021,6 +1042,7 @@ export class App implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.songs = this.songs.filter(item => item.id !== song.id);
+          this.loadArtists(true);
           this.selectedId = this.songs[0]?.id ?? 0;
 
           this.deleteOpen = false;

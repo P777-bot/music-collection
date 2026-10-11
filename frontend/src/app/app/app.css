@@ -567,6 +567,7 @@ h2 {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.song-info .artist-name-link { width: fit-content; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .genre-tag {
   display: inline-flex;
@@ -583,6 +584,8 @@ h2 {
 .genre-filter { margin: 0 0 34px; }
 .genre-filter-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: #ded4e8; font-size: 13px; font-weight: 750; }
 .genre-chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.artist-filter { display: grid; grid-template-columns: minmax(130px, 190px) minmax(0, 1fr); align-items: center; gap: 12px; margin-top: 16px; color: #ded4e8; font-size: 13px; font-weight: 700; }
+.artist-filter select { width: 100%; min-height: 44px; padding: 9px 12px; border: 1px solid #38313f; border-radius: 12px; background: var(--panel); color: var(--text); }
 .genre-chip {
   min-height: 36px;
   padding: 7px 12px;
@@ -739,6 +742,7 @@ h2 {
 }
 .artist-name-link { cursor: pointer; }
 .artist-name-link:hover { color: #f0a6f4; text-decoration: underline; }
+.big-artist.artist-name-link { color: #c2b5d1; font-size: 18px; }
 .song-media-section,.lyrics-panel { margin-top: 22px; padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: #17151f; }
 .song-media-section h3,.lyrics-panel h3 { margin: 0 0 14px; font-size: 18px; }
 .youtube-player { width: 100%; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 13px; background: #08070a; }
@@ -1086,6 +1090,7 @@ button:focus-visible,
   .search-row {
     flex-direction: column;
   }
+  .artist-filter { grid-template-columns: 1fr; gap: 7px; }
 
   .searchbox {
     width: 100%;

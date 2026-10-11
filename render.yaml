@@ -1,0 +1,40 @@
+﻿services:
+  - type: web
+    name: music-collection-api
+    runtime: node
+    branch: main
+    rootDir: backend
+    buildCommand: npm ci && npm run build:render
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_ORIGIN
+        fromService:
+          type: web
+          name: music-collection-web
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: music-collection-web
+    runtime: static
+    branch: main
+    rootDir: frontend
+    buildCommand: npm ci && npm run build:render
+    staticPublishPath: dist/frontend/browser
+    autoDeployTrigger: commit
+    envVars:
+      - key: API_BASE_URL
+        fromService:
+          type: web
+          name: music-collection-api
+          envVarKey: RENDER_EXTERNAL_URL
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+

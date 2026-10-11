@@ -108,34 +108,43 @@ npm.cmd run promote-admin -- admin@example.test admin@example.test
 
 ## Deploy บน Render
 
-โปรเจกต์นี้เป็น monorepo ให้สร้างบริการจาก Repository เดียวกัน:
+โปรเจกต์มี [Render Blueprint](render.yaml) สำหรับสร้าง Backend Web Service และ Frontend Static Site จาก Repository นี้บน branch `main`:
 
-### Backend — Render Web Service
+### Backend — Web Service
 
 - Root Directory: `backend`
-- Build Command: `npm ci && npm run build:render` โดย script สร้าง Prisma Client ก่อน NestJS compile
-- Start Command: `npm run start:prod`
-- Environment Variables ใน Render Dashboard: `DATABASE_URL` (Internal Database URL ของ PostgreSQL), `JWT_SECRET` (ค่าสุ่มที่เป็นความลับ) และ `FRONTEND_ORIGIN` (Origin เต็มของ Static Site เช่น `https://ชื่อเว็บ.onrender.com`)
-- Render กำหนด `PORT` ให้ Web Service; NestJS อ่าน `process.env.PORT` อยู่แล้ว อย่า commit ค่า PORT หรือ Secret ลง Source Code
+- Build: `npm ci && npm run build:render` (สร้าง Prisma Client แล้ว Build NestJS)
+- Start: `npm run start:prod`
+- Health Check: `/health`
+- Blueprint ขอ `DATABASE_URL` จาก Dashboard และสร้าง `JWT_SECRET` แบบสุ่ม; `FRONTEND_ORIGIN` อ้าง Origin ของ Static Site อัตโนมัติ
+- Render กำหนด `PORT` ให้บริการ; Backend อ่าน `process.env.PORT` และเปิด CORS แบบ Credentials ให้ Origin ที่ตั้งไว้
 
-### Frontend — Render Static Site
+### Frontend — Static Site
 
 - Root Directory: `frontend`
-- Build Command: `npm ci && npm run build:render`
-- Publish Directory: `dist/frontend/browser`
-- Build Environment Variable: `API_BASE_URL` ต้องเป็น HTTPS URL ของ Backend Web Service เช่น `https://ชื่อ-api.onrender.com` โดยไม่ใส่ credentials หรือ Secret
-- `build:render` เขียน `runtime-config.js` ลง Build Output จาก `API_BASE_URL`; URL นี้ไม่ใช่ Secret และไม่ถูกเขียนลง Source Code ส่วนการรันในเครื่องใช้ `http://localhost:3000` จาก Angular development environment
-- ตั้งค่า SPA fallback/rewrite ของ Static Site ให้ route กลับไป `index.html` เพื่อรองรับ Angular Router เมื่อเปิด URL ภายในโดยตรง
+- Build: `npm ci && npm run build:render`
+- Publish Directory (relative to repository root): `frontend/dist/frontend/browser` (ตรงกับ Angular Build Output ปัจจุบัน)
+- `API_BASE_URL` อ้าง Public URL ของ Backend จาก Blueprint และ `build:render` เขียนลง `runtime-config.js` ใน Build Output เท่านั้น
+- Blueprint ตั้ง SPA rewrite ไป `index.html` เพื่อให้ Angular Routes เปิดตรงและ Refresh ได้
+- Production fallback ใช้ Origin ปัจจุบัน ไม่ส่ง Request ไป `localhost`; Local Development ยังคงใช้ `http://localhost:3000`
 
-### PostgreSQL และ Migrations
+### Neon และ Migration
 
-1. สร้าง PostgreSQL บน Render แล้วตั้ง `DATABASE_URL` ใน Backend Environment โดยใช้ connection string จาก Dashboard เท่านั้น
-2. ตรวจฐานข้อมูลเป้าหมายและ migration history ก่อน deploy schema จากนั้นรัน `npm run prisma:migrate:deploy` ใน Backend Shell หรือ Pre-Deploy Command เมื่อยืนยันแล้วว่าฐานข้อมูลว่างและ migration history ถูกต้อง
-3. ห้ามรัน `prisma migrate reset` หรือ `prisma/seed.ts` กับข้อมูลที่ต้องเก็บรักษา; Seed ปัจจุบันมี `deleteMany()`
-4. Migration `20261007211747_init` ลบ `Song.artist` และเพิ่ม `artistId` แบบ required; `20261007221825_init` ลบ `title`, `createdAt`, `releaseYear`, `coverUrl` และเพิ่ม required fields; `20261008120000_unique_song_per_album` อาจล้มเหลวหากมีเพลงซ้ำใน Artist/Album เดียวกัน
-5. Migration เก่าเหล่านี้อาจทำให้ข้อมูลสูญหายหรือล้มเหลวเมื่อ deploy ไปยังฐานข้อมูลที่มีข้อมูลแต่ไม่มี migration history ที่ตรงกัน สำหรับฐานข้อมูลเช่นนั้นให้หยุดและวางแผน baseline/ตรวจข้อมูลก่อน ห้ามปรับ migration เก่าหรือ deploy ต่อโดยคาดเดา
+1. สร้าง Neon Project/Branch แล้วตรวจว่าฐานข้อมูลเป้าหมายมีตารางหรือข้อมูลอยู่หรือไม่ก่อนเชื่อมต่อ
+2. ใส่ connection string ในตัวแปร `DATABASE_URL` ของ Backend ผ่าน Render Dashboard เท่านั้น (ห้ามใส่ใน Source Code/README/Log); Neon connection string แบบ pooled ใช้ได้กับ Prisma รุ่นปัจจุบันของโปรเจกต์ หากเลือก direct connection ก็ใส่ค่าในตัวแปรเดิมได้โดยไม่ต้องแก้ Schema
+3. ถ้าฐานข้อมูลใหม่ว่าง ให้รัน `npm run prisma:migrate:deploy` จาก Backend Shell/สภาพแวดล้อมที่ตั้ง `DATABASE_URL` แล้วตรวจผลก่อนเปิดใช้ API; คำสั่งนี้ Apply migration ที่มีอยู่ ไม่ Reset ฐานข้อมูล
+4. Migration `20261007211747_init` และ `20261007221825_init` มี `DROP COLUMN`; ใช้ได้เฉพาะกับฐานข้อมูลใหม่ว่างตามลำดับ migration ที่ออกแบบไว้ หาก Neon มีข้อมูลหรือ migration history ไม่ตรง ให้หยุด ห้ามรันคำสั่งนี้จนกว่าจะสำรองข้อมูลและตรวจแผน Baseline/Mapping เสร็จ
+5. ห้ามใช้ `prisma migrate reset`, `prisma db push` หรือ Seed ปัจจุบันกับข้อมูลที่ต้องเก็บรักษา (`backend/prisma/seed.ts` เรียก `deleteMany()`)
 
-`npm run prisma:generate` และ `npm run build` ใช้ตรวจ/สร้าง artifacts โดยไม่แก้ข้อมูล DB; Render ใช้ `npm run build:render` เพื่อรันทั้งสองขั้นตอน ส่วน `npm run prisma:migrate:deploy` เปลี่ยน schema จริง ให้รันกับฐานข้อมูลเป้าหมายที่ตรวจสอบแล้วเท่านั้น
+Blueprint ไม่สั่ง Migration อัตโนมัติ เพื่อให้ตรวจ Neon ก่อนทุกครั้ง การ Build/Generate Prisma Client ไม่แก้แถวข้อมูล; `prisma migrate deploy` เปลี่ยน Schema จริง
+
+### ย้ายข้อมูลจากฐานข้อมูล Local
+
+ฐานข้อมูลที่เชื่อมอยู่ในเครื่องมี 18 เพลง, 13 Artist, 24 Genre, 1 User และ 5 Favorite ณ วันที่ตรวจสอบ; สถานะ migration มี 9 รายการและ Up to date. ยังไม่ได้เชื่อม Neon จึงยังไม่ทราบจำนวนหรือข้อมูลที่มีอยู่ Production
+
+ก่อนย้าย ให้สำรองฐานข้อมูล Local และ Neon แยกกัน, ตรวจแถว/ตารางของ Neon แบบอ่านอย่างเดียว และยืนยันว่าเป้าหมายไม่มีข้อมูลชนกัน จากนั้น Apply schema เฉพาะเมื่อ Neon ว่างและตรวจ migration แล้ว ข้อมูลที่ต้องรักษาประกอบด้วย `Artist`, `Song`, `User`, `Favorite` และ `SongGenre`; ตาราง `Genre` ที่ migration สร้างมี Canonical catalog อยู่แล้ว ให้จับคู่ Genre ด้วย `normalizedName` และ remap `SongGenre.genreId` แทนการเพิ่ม Genre ซ้ำ รักษา ID/Foreign Key ของ Artist, Song, User และ Favorite ให้สัมพันธ์กัน แล้วตรวจจำนวนแถว, foreign keys, Favorite และรายการเพลงหลัง Import โดยไม่แสดงอีเมลหรือ Password Hash ใน Log/รายงาน
+
+ใช้ไฟล์ Backup ที่จำกัดสิทธิ์เข้าถึง เพราะมีข้อมูลผู้ใช้และ Password Hash; ห้ามแนบไฟล์ Backup เข้า GitHub หรือ ZIP ส่งงาน และเก็บต้นฉบับไว้จนกว่าจะตรวจข้อมูลปลายทางครบ
 
 ## API
 

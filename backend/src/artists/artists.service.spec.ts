@@ -16,7 +16,7 @@ describe('ArtistsService', () => {
     prisma.artist.findMany.mockResolvedValue([{
       id: 9,
       name: 'Artist',
-      songs: [{ album: 'Album A' }, { album: 'Album A' }, { album: '' }, { album: 'Album B' }],
+      songs: [{ album: 'Album A' }, { album: ' Album A ' }, { album: '' }, { album: 'Album B' }],
       _count: { songs: 4 },
     }]);
 
@@ -36,13 +36,14 @@ describe('ArtistsService', () => {
     prisma.artist.findUnique.mockResolvedValue({
       id: 9,
       name: 'Artist',
-      songs: [makeSong(1, 'Album A'), makeSong(2, 'Album A'), makeSong(3, '   ')],
+      songs: [makeSong(1, 'Album A'), makeSong(2, ' Album A '), makeSong(3, '   ')],
     });
 
     const detail = await service.findOne(9);
     expect(detail.albumCount).toBe(1);
     expect(detail.songCount).toBe(3);
     expect(detail.albums[0].songCount).toBe(2);
+    expect(detail.albums[0].name).toBe('Album A');
     expect(detail.unalbumedSongs.map(song => song.id)).toEqual([3]);
     expect(detail.songs).toHaveLength(3);
   });

@@ -23,7 +23,11 @@ describe('App', () => {
     http = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    http.match('http://localhost:3000/artists').forEach(request => request.flush([]));
+    http.match('http://localhost:3000/auth/me').forEach(request => request.flush(null, { status: 401, statusText: 'Unauthorized' }));
+    http.verify();
+  });
 
   it('loads the collection from the API and renders the existing home design', async () => {
     const fixture = TestBed.createComponent(App);
@@ -121,6 +125,44 @@ describe('App', () => {
     expect(app.safeYouTubeWatchUrl('http://youtube.com/watch?v=abcdefghijk')).toBeNull();
   });
 
+  it('shows the saved per-song YouTube link and preloads it into the authorized edit form', async () => {
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    http.expectOne('http://localhost:3000/auth/me').flush(null, { status: 401, statusText: 'Unauthorized' });
+    http.expectOne('http://localhost:3000/songs').flush([{
+      id: 4, createdById: 7, name: 'Detail Song', album: 'Detail Album', genre: 'Pop',
+      releaseDate: '2024-05-10T00:00:00.000Z', youtubeUrl: 'https://youtu.be/abcdefghijk',
+      artist: { id: 2, name: 'Detail Artist' },
+    }]);
+    http.expectOne('http://localhost:3000/genres').flush([]);
+    await fixture.whenStable();
+
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/songs/4');
+    await fixture.whenStable();
+    fixture.componentInstance.page = 'detail';
+    fixture.detectChanges();
+    const link = (fixture.nativeElement as HTMLElement).querySelector<HTMLAnchorElement>('.youtube-open-link');
+    expect(link?.href).toBe('https://www.youtube.com/watch?v=abcdefghijk');
+    expect(link?.target).toBe('_blank');
+    expect(link?.rel).toContain('noopener');
+
+    TestBed.inject(AuthService).user.set({
+      id: 7, email: 'owner@example.test', role: 'USER', createdAt: '2026-01-01T00:00:00.000Z',
+    });
+    fixture.componentInstance.startEdit();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    http.expectOne('http://localhost:3000/auth/me').flush({ user: {
+      id: 7, email: 'owner@example.test', role: 'USER', createdAt: '2026-01-01T00:00:00.000Z',
+    } });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.editForm.youtubeUrl).toBe('https://youtu.be/abcdefghijk');
+    expect((fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>('#edit-youtube-url')?.value)
+      .toBe('https://youtu.be/abcdefghijk');
+
+  });
+
   it('keeps Home and Discover active states separate and routes Home search to Discover', async () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
@@ -132,6 +174,8 @@ describe('App', () => {
 
     const buttons = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.navlinks button'));
     buttons[1].click();
+    await fixture.whenStable();
+    http.expectOne('http://localhost:3000/artists').flush([]);
     await fixture.whenStable();
     fixture.detectChanges();
     expect(buttons[0].classList.contains('active')).toBe(false);
@@ -215,6 +259,8 @@ describe('App', () => {
 
     expect(router.url).toBe('/discover');
     expect(fixture.componentInstance.page).toBe('discover');
+    http.expectOne('http://localhost:3000/artists').flush([]);
+    await fixture.whenStable();
   });
 
   it('filters by multiple selected Genres using OR logic', async () => {
@@ -233,6 +279,10 @@ describe('App', () => {
     app.toggleFilterGenre('Rock');
     app.toggleFilterGenre('Jazz');
     expect(app.visibleSongs.map(song => song.id)).toEqual([1, 2]);
+    app.page = 'discover';
+    app.selectedArtistId = 2;
+    expect(app.visibleSongs.map(song => song.id)).toEqual([2]);
+    app.selectedArtistId = null;
     app.toggleFilterGenre('Rock');
     expect(app.visibleSongs.map(song => song.id)).toEqual([2]);
     app.clearFilters();
@@ -315,6 +365,8 @@ describe('App', () => {
     expect(app.addForm.name).toBe('');
     expect(app.toast).toContain('เพิ่มเพลงสำเร็จ');
     expect(app.savingAdd).toBe(false);
+    http.expectOne('http://localhost:3000/artists').flush([]);
+    await fixture.whenStable();
   });
 
   it('keeps Add Song form values and stays on the form when POST fails', async () => {
@@ -394,7 +446,7 @@ describe('App', () => {
       selectedGenres: ['Pop'],
       date: '2024-05-10',
       url: '',
-      youtubeUrl: '',
+      youtubeUrl: 'https://www.youtube.com/watch?v=abcdefghijk',
       lyrics: '',
     };
 
@@ -402,6 +454,7 @@ describe('App', () => {
     const update = http.expectOne('http://localhost:3000/songs/4');
     expect(update.request.method).toBe('PUT');
     expect(update.request.withCredentials).toBe(true);
+    expect(update.request.body.youtubeUrl).toBe('https://www.youtube.com/watch?v=abcdefghijk');
     update.flush({
       id: 4,
       createdById: 3,
@@ -411,8 +464,11 @@ describe('App', () => {
       genres: [{ id: 1, name: 'Pop', parentId: null }],
       releaseDate: '2024-05-10T00:00:00.000Z',
       coverUrl: null,
+      youtubeUrl: 'https://www.youtube.com/watch?v=abcdefghijk',
       artist: { id: 2, name: 'Owned Artist' },
     });
+    await fixture.whenStable();
+    http.expectOne('http://localhost:3000/artists').flush([]);
     await fixture.whenStable();
 
     app.confirmDelete();
@@ -420,6 +476,8 @@ describe('App', () => {
     expect(remove.request.method).toBe('DELETE');
     expect(remove.request.withCredentials).toBe(true);
     remove.flush({ deleted: true, id: 4 });
+    await fixture.whenStable();
+    http.expectOne('http://localhost:3000/artists').flush([]);
     await fixture.whenStable();
     expect(app.page).toBe('home');
   });

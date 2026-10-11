@@ -60,10 +60,12 @@ export class AuthController {
   }
 
   private cookieOptions(): CookieOptions {
+    const production = process.env.NODE_ENV === 'production';
     return {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: production,
+      // Render's frontend and API use separate onrender.com sites.
+      sameSite: production ? 'none' : 'lax',
       path: '/',
     };
   }

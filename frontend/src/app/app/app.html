@@ -114,7 +114,7 @@
 
         <div class="genre-filter" role="group" [attr.aria-label]="tr('Filter by Genre')">
           <div class="genre-filter-heading"><span>{{ tr('Genres') }}</span>
-            @if (selectedGenres.length || search) {
+            @if (selectedGenres.length || search || selectedArtistId) {
               <button class="clear-filters" (click)="clearFilters()">{{ tr('Clear filters') }}</button>
             }
           </div>
@@ -125,6 +125,20 @@
                 (click)="toggleFilterGenre(genre.name)">{{ tr(genre.name) }}</button>
             }
           </div>
+          @if (page === 'discover') {
+            <div class="artist-filter">
+              <label for="discover-artist">{{ tr('Filter by Artist') }}</label>
+              <select id="discover-artist" [ngModel]="selectedArtistId ?? ''" [disabled]="loadingArtists"
+                (ngModelChange)="onArtistFilterChange($event)" name="discoverArtist">
+                <option value="">{{ tr('All artists') }}</option>
+                @for (artist of artists; track artist.id) {
+                  <option [value]="artist.id">{{ artist.name }} · {{ artist.songCount }} {{ tr('songs') }} · {{ artist.albumCount }} {{ tr('albums') }}</option>
+                }
+              </select>
+              @if (loadingArtists) { <small class="muted">{{ tr('Loading artists...') }}</small> }
+              @else if (artistError) { <small class="field-error" role="alert">{{ artistError }}</small> }
+            </div>
+          }
           @if (selectedGenres.length) {
             <div class="selected-genres" [attr.aria-label]="tr('Selected Genres')">
               @for (genre of selectedGenres; track genre) {
@@ -181,7 +195,11 @@
 
                 <div class="song-info">
                   <div class="song-title">{{ song.name }}</div>
-                  <div class="artist">{{ song.artist }}</div>
+                  @if (song.artistId) {
+                    <button class="artist artist-name-link" type="button" (click)="openArtist(song.artistId)">{{ song.artist }}</button>
+                  } @else {
+                    <div class="artist">{{ song.artist }}</div>
+                  }
                   @for (genre of displayGenres(song); track genre) {
                     <span class="genre-tag">{{ tr(genre) }}</span>
                   }
@@ -235,7 +253,11 @@
             <div class="detail-content">
               <div class="section-label">{{ tr('Song Detail') }}</div>
               <h2>{{ song.name }}</h2>
-              <div class="big-artist">{{ song.artist }}</div>
+              @if (song.artistId) {
+                <button class="big-artist artist-name-link" type="button" (click)="openArtist(song.artistId)">{{ song.artist }}</button>
+              } @else {
+                <div class="big-artist">{{ song.artist }}</div>
+              }
 
               <div class="meta">
                 <div class="meta-card">
@@ -265,6 +287,21 @@
               </div>
             </div>
           </div>
+          <section class="song-media-section" [attr.aria-label]="tr('YouTube link')">
+            <h3>{{ tr('YouTube') }}</h3>
+            @if (song.youtubeEmbedUrl; as embedUrl) {
+              <div class="youtube-player">
+                <iframe [src]="embedUrl" [title]="tr('YouTube video for') + ' ' + song.name"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+              </div>
+              @if (safeYouTubeWatchUrl(song.youtubeUrl); as watchUrl) {
+                <a class="youtube-open-link" [href]="watchUrl" target="_blank" rel="noopener noreferrer">{{ tr('Open on YouTube') }} ↗</a>
+              }
+            } @else {
+              <p class="muted">{{ tr('No YouTube link is available for this song.') }}</p>
+            }
+          </section>
         </section>
       } @else {
         <div class="state-message">
@@ -335,6 +372,13 @@
                 type="url" placeholder="https://..." />
               <small class="muted">{{ tr('Enter a cover image URL or leave it blank.') }}</small>
             </div>
+
+            <div class="field full">
+              <label for="add-youtube-url">{{ tr('YouTube URL (optional)') }}</label>
+              <input id="add-youtube-url" name="youtubeUrl" [(ngModel)]="addForm.youtubeUrl"
+                type="url" maxlength="2048" autocomplete="url" placeholder="https://www.youtube.com/watch?v=..." />
+              <small class="muted">{{ tr('YouTube watch, youtu.be, and Shorts links are supported.') }}</small>
+            </div>
           </div>
 
           <div class="form-actions">
@@ -400,6 +444,13 @@
               <label for="edit-url">{{ tr('Cover Image URL (optional)') }}</label>
               <input id="edit-url" name="editUrl" [(ngModel)]="editForm.url"
                 type="url" placeholder="https://..." />
+            </div>
+
+            <div class="field full">
+              <label for="edit-youtube-url">{{ tr('YouTube URL (optional)') }}</label>
+              <input id="edit-youtube-url" name="editYoutubeUrl" [(ngModel)]="editForm.youtubeUrl"
+                type="url" maxlength="2048" autocomplete="url" placeholder="https://www.youtube.com/watch?v=..." />
+              <small class="muted">{{ tr('YouTube watch, youtu.be, and Shorts links are supported.') }}</small>
             </div>
           </div>
 

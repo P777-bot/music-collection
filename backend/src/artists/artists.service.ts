@@ -63,9 +63,9 @@ export class ArtistsService {
         unalbumedSongs.push(song);
         continue;
       }
-      const group = albumMap.get(song.album) ?? [];
+      const group = albumMap.get(name) ?? [];
       group.push(song);
-      albumMap.set(song.album, group);
+      albumMap.set(name, group);
     }
 
     const albums = [...albumMap.entries()]
@@ -89,6 +89,6 @@ export class ArtistsService {
   }
 
   private countAlbums(albumNames: string[]): number {
-    return new Set(albumNames.filter(name => !!name.trim())).size;
+    return new Set(albumNames.map(name => name.trim()).filter(Boolean)).size;
   }
 }
